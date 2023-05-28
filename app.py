@@ -8,6 +8,10 @@ import pickle as pkl
 import pickle
 from dotenv import load_dotenv
 import os
+from langchain.chains.question_answering import load_qa_chain
+
+
+from langchain.llms import OpenAI
 # sidebar
 with st.sidebar:
 
@@ -74,6 +78,25 @@ def main():
             Vectors = FAISS.from_texts(chunks, embedding=embeddings)
             with open(f"{store_name}.pkl", "wb") as f:
                 pickle.dump(Vectors, f)
+
+         # Accept user question / query
+
+        query = st.text_input("Ask questions about your PDF file.")
+        # st.write(query)
+
+        if query:
+
+            docs = Vectors.similarity_search(query=query, k=3)
+            # st.write(docs)
+            # feeding ranked results to LLM AI
+
+            llm = OpenAI(temperature=0)
+
+            chain = load_qa_chain(llm=llm, chain_type="stuff")
+
+            response = chain.run(input_documents=docs, question=query)
+
+            st.write(response)
 
 
 if __name__ == '__main__':
