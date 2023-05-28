@@ -2,14 +2,14 @@ import streamlit as st
 from streamlit_extras.add_vertical_space import add_vertical_space
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
-import pickle as pkl
 import pickle
 from dotenv import load_dotenv
 import os
 from langchain.chains.question_answering import load_qa_chain
 
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain import HuggingFaceHub
 
 from langchain.llms import OpenAI
 # sidebar
@@ -52,10 +52,6 @@ def main():
 
         # st.write(text)
 
-        '''
-        Dividing text into smaller chaunks to process in llm model as text limit size
-        '''
-
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200,
@@ -66,20 +62,10 @@ def main():
 
         # computing embedding for chunks
 
-        store_name = pdf.name[:-4]
+        embeddings = HuggingFaceEmbeddings()
+        Vectors = FAISS.from_texts(chunks, embedding=embeddings)
 
-        if os.path.exists(f"{store_name}.pkl"):
-            with open(f"{store_name}.pkl", "rb") as f:
-                Vectors = pickle.load(f)
-
-        else:
-            embeddings = OpenAIEmbeddings()
-
-            Vectors = FAISS.from_texts(chunks, embedding=embeddings)
-            with open(f"{store_name}.pkl", "wb") as f:
-                pickle.dump(Vectors, f)
-
-         # Accept user question / query
+        # Accept user question / query
 
         query = st.text_input("Ask questions about your PDF file.")
         # st.write(query)
@@ -90,7 +76,8 @@ def main():
             # st.write(docs)
             # feeding ranked results to LLM AI
 
-            llm = OpenAI(temperature=0)
+            llm = HuggingFaceHub(repo_id="google/flan-t5-xl",
+                                 model_kwargs={"temperature": 0, "max_length": 512})
 
             chain = load_qa_chain(llm=llm, chain_type="stuff")
 
